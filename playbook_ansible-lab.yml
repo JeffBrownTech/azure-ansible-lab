@@ -1,0 +1,125 @@
+---
+- hosts: localhost
+  connection: local
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Create resource group {{ rg_name }}
+      azure_rm_resourcegroup:
+        name: "{{ rg_name }}"
+        location: "{{ region }}"
+
+    - name: Create a default nsg
+      azure_rm_securitygroup:
+        name: "default-nsg"
+        resource_group: "{{ rg_name }}"
+        state: present
+
+    - name: Create nsg to allow SSH over port 22
+      azure_rm_securitygroup:
+        name: "{{ ansiblecontrol_vm_name }}-nsg"
+        resource_group: "{{ rg_name }}"
+        state: present
+        rules:
+          - name: Allow_Port22_SSH
+            priority: 150
+            access: Allow
+            description: Allow SSH over port 22
+            direction: Inbound
+            source_address_prefix: Internet
+            source_port_range: "*"
+            destination_address_prefix: VirtualNetwork
+            destination_port_range: 22
+            protocol: Tcp
+
+    - name: Create virtual network {{ vnet_name }}
+      azure_rm_virtualnetwork:
+        name: "{{ vnet_name }}"
+        resource_group: "{{ rg_name }}"
+        state: present
+        address_prefixes_cidr:
+          - "{{ vnet_prefix }}"
+
+    - name: Create {{ subnet0_name }}
+      azure_rm_subnet:
+        name: "{{ subnet0_name }}"
+        resource_group: "{{ rg_name }}"
+        virtual_network_name: "{{ vnet_name }}"
+        state: present
+        address_prefix_cidr: "{{ subnet0_prefix }}"
+
+    - name: Create {{ ansiblecontrol_vm_name }} network interface
+      azure_rm_networkinterface:
+        name: "{{ ansiblecontrol_vm_name }}-nic"
+        resource_group: "{{ rg_name }}"
+        virtual_network: "{{ vnet_name }}"
+        subnet_name: "{{ subnet0_name }}"
+        state: present
+        ip_configurations:
+          - name: "ipconfig1"
+            private_ip_allocation_method: Dynamic
+            public_ip_address_name: "{{ ansiblecontrol_vm_name }}-publicip"
+            public_ip_allocation_method: Dynamic
+        security_group: "{{ ansiblecontrol_vm_name }}-nsg"
+
+    - name: Create CentOS vm network interfaces
+      azure_rm_networkinterface:
+        name: "{{ centos_vm_name }}{{ item }}-nic"
+        resource_group: "{{ rg_name }}"
+        virtual_network: "{{ vnet_name }}"
+        subnet_name: "{{ subnet0_name }}"
+        state: present
+        ip_configurations:
+          - name: "ipconfig1"
+            private_ip_allocation_method: Dynamic
+        security_group: default-nsg
+      loop: "{{ query('sequence', 'count={{ centos_vm_count }}')}}"
+      #loop: "{{ query('sequence', 'start=1 end={{ centos_vm_count }}')}}"
+
+    - name: Create Ubuntu vm network interfaces
+      azure_rm_networkinterface:
+        name: "{{ ubuntu_vm_name }}{{ item }}-nic"
+        resource_group: "{{ rg_name }}"
+        virtual_network: "{{ vnet_name }}"
+        subnet_name: "{{ subnet0_name }}"
+        state: present
+        ip_configurations:
+          - name: "ipconfig1"
+            private_ip_allocation_method: Dynamic
+        security_group: default-nsg
+      loop: "{{ query('sequence', 'count={{ ubuntu_vm_count }}')}}"
+
+    - name: Create ansible virtual machine
+      azure_rm_virtualmachine:
+        resource_group: "{{ rg_name }}"
+        name: "{{ ansiblecontrol_vm_name }}"
+        vm_size: "{{ vm_size }}"
+        admin_username: "{{ admin_username }}"
+        admin_password: "{{ admin_password }}"
+        network_interfaces: "{{ ansiblecontrol_vm_name }}-nic"
+        managed_disk_type: Standard_LRS
+        os_disk_name: "{{ ansiblecontrol_vm_name }}_os-disk"
+        image:
+          offer: CentOS
+          publisher: OpenLogic
+          sku: "{{ centos_sku }}"
+          version: latest
+
+    - name: Create CentOS virtual machines
+      azure_rm_virtualmachine:
+        resource_group: "{{ rg_name }}"
+        name: "{{ centos_vm_name }}{{ item }}"
+        vm_size: "{{ vm_size }}"
+        admin_username: "{{ admin_username }}"
+        admin_password: "{{ admin_password }}"
+        network_interfaces: "{{ centos_vm_name }}{{ item }}-nic"
+        managed_disk_type: Standard_LRS
+        os_disk_name: "{{ centos_vm_name }}_os-disk"
+        image:
+          offer: CentOS
+          publisher: OpenLogic
+          sku: "{{ centos_sku }}"
+          version: latest
+      loop: "{{ query('sequence', 'count={{ centos_vm_count }}') }}"

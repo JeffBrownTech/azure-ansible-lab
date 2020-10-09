@@ -1,0 +1,22 @@
+---
+rg_name: "ansible-azure-practice-rg"
+region: "westus"
+
+vnet_name: "vnet-10-0-0-0"
+vnet_prefix: "10.0.0.0/16"
+subnet0_name: "subnet0"
+subnet0_prefix: "10.0.0.0/24"
+
+ansiblecontrol_vm_name: "ansiblecontrol"
+
+centos_vm_name: "centos"
+centos_vm_count: 1
+centos_sku: "7.7"
+
+ubuntu_vm_name: "ubuntu"
+ubuntu_vm_count: 2
+
+vm_size: "Standard_B1s"
+
+admin_username: "jeff_cloud"
+admin_password: "P@ssw0rd"
