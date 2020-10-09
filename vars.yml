@@ -15,8 +15,9 @@ centos_sku: "7.7"
 
 ubuntu_vm_name: "ubuntu"
 ubuntu_vm_count: 2
+ubuntu_sku: "18.04-LTS"
 
 vm_size: "Standard_B1s"
 
 admin_username: "jeff_cloud"
-admin_password: "P@ssw0rd"
+admin_password: "P@ssw0rd2020!"

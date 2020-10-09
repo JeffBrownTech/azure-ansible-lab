@@ -116,10 +116,27 @@
         admin_password: "{{ admin_password }}"
         network_interfaces: "{{ centos_vm_name }}{{ item }}-nic"
         managed_disk_type: Standard_LRS
-        os_disk_name: "{{ centos_vm_name }}_os-disk"
+        os_disk_name: "{{ centos_vm_name }}{{ item }}_os-disk"
         image:
           offer: CentOS
           publisher: OpenLogic
           sku: "{{ centos_sku }}"
           version: latest
       loop: "{{ query('sequence', 'count={{ centos_vm_count }}') }}"
+
+    - name: Create Ubuntu virtual machines
+      azure_rm_virtualmachine:
+        resource_group: "{{ rg_name }}"
+        name: "{{ ubuntu_vm_name }}{{ item }}"
+        vm_size: "{{ vm_size }}"
+        admin_username: "{{ admin_username }}"
+        admin_password: "{{ admin_password }}"
+        network_interfaces: "{{ ubuntu_vm_name }}{{ item }}-nic"
+        managed_disk_type: Standard_LRS
+        os_disk_name: "{{ ubuntu_vm_name }}{{ item }}_os-disk"
+        image:
+          offer: UbuntuServer
+          publisher: Canonical
+          sku: "{{ ubuntu_sku }}"
+          version: latest
+      loop: "{{ query('sequence', 'count={{ ubuntu_vm_count }}') }}"
